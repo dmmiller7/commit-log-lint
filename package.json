@@ -1,0 +1,14 @@
+{
+  "name": "commit-log-lint",
+  "version": "0.1.0",
+  "description": "Lints git commit messages and reports findings with line numbers",
+  "type": "module",
+  "bin": {
+    "commit-log-lint": "dist/cli.js"
+  },
+  "main": "dist/lint.js",
+  "scripts": {
+    "build": "tsc"
+  },
+  "license": "MIT"
+}
