@@ -62,14 +62,40 @@ node /path/to/commit-log-lint/dist/cli.js "$1"
 The hook receives the path to the commit message as its first argument,
 which lines up with how this tool reads a file argument directly.
 
+## Configuration
+
+Drop a `.commitlintrc.json` in the directory you run the tool from to
+override the defaults. Every field is optional; anything you leave out
+keeps its default value.
+
+```json
+{
+  "maxSubjectLength": 50,
+  "maxBodyLineLength": 72,
+  "rules": {
+    "subject-not-capitalized": "off",
+    "trailing-whitespace": "error"
+  }
+}
+```
+
+`rules` maps a rule id (see the table below) to `"error"`, `"warning"`,
+or `"off"`. An unknown rule id or an invalid severity value causes the
+tool to exit `1` with an explanation instead of linting anything, so a
+typo in the config doesn't silently disable a check.
+
 ## Exit status
 
-Exits `1` if any finding has severity `error` (currently just the wip/fixup
-marker check), `0` otherwise. Warnings are printed but don't fail the run.
+Exits `1` if any finding has severity `error` (by default that's just the
+wip/fixup marker and missing-blank-line checks) or the config file couldn't
+be read, `0` otherwise. Warnings are printed but don't fail the run.
 
 ## Rules
 
-| id | severity | checks |
+Severities below are the defaults; override any of them in
+`.commitlintrc.json` as shown above.
+
+| id | default severity | checks |
 |---|---|---|
 | `subject-length` | warning | subject line over 72 characters |
 | `subject-trailing-period` | warning | subject line ends with `.` |
