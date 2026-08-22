@@ -57,6 +57,57 @@ function loadConfig(): LintConfig {
   return mergeConfig(overrides);
 }
 
+interface ParsedArgs {
+  format: "text" | "json";
+  sources: string[];
+}
+
+// Only one flag exists so far, so hand-rolled parsing is simpler than
+// pulling in an args library for it.
+function parseArgs(argv: string[]): ParsedArgs {
+  const sources: string[] = [];
+  let format = "text";
+
+  for (let i = 0; i < argv.length; i++) {
+    const arg = argv[i];
+    if (arg === "--format") {
+      const value = argv[++i];
+      if (value === undefined) {
+        throw new Error("--format requires a value (text or json)");
+      }
+      format = value;
+    } else if (arg.startsWith("--format=")) {
+      format = arg.slice("--format=".length);
+    } else {
+      sources.push(arg);
+    }
+  }
+
+  if (format !== "text" && format !== "json") {
+    throw new Error(`unknown format "${format}", expected "text" or "json"`);
+  }
+
+  return { format, sources };
+}
+
+interface SourceResult {
+  source: string;
+  readError: string | null;
+  findings: ReturnType<typeof lintText>;
+}
+
+function lintSource(source: string, config: LintConfig): SourceResult {
+  const label = source === "-" ? "<stdin>" : source;
+  let text: string;
+  try {
+    text = readSource(source);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { source: label, readError: message, findings: [] };
+  }
+  return { source: label, readError: null, findings: lintText(text, config) };
+}
+
 function main(): number {
   let config: LintConfig;
   try {
@@ -66,27 +117,33 @@ function main(): number {
     return 1;
   }
 
-  const args = process.argv.slice(2);
-  const sources = args.length > 0 ? args : ["-"];
-  let hasError = false;
+  let parsed: ParsedArgs;
+  try {
+    parsed = parseArgs(process.argv.slice(2));
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    return 1;
+  }
 
-  for (const source of sources) {
-    const label = source === "-" ? "<stdin>" : source;
-    let text: string;
-    try {
-      text = readSource(source);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      console.error(`${label}: could not read source: ${message}`);
-      hasError = true;
-      continue;
-    }
+  const sources = parsed.sources.length > 0 ? parsed.sources : ["-"];
+  const results = sources.map((source) => lintSource(source, config));
+  const hasError = results.some(
+    (result) => result.readError !== null || result.findings.some((finding) => finding.severity === "error"),
+  );
 
-    for (const finding of lintText(text, config)) {
-      if (finding.severity === "error") hasError = true;
-      console.log(
-        `${label}:${finding.line}:${finding.column}: ${finding.severity} ${finding.message} (${finding.ruleId})`,
-      );
+  if (parsed.format === "json") {
+    console.log(JSON.stringify(results, null, 2));
+  } else {
+    for (const result of results) {
+      if (result.readError !== null) {
+        console.error(`${result.source}: could not read source: ${result.readError}`);
+        continue;
+      }
+      for (const finding of result.findings) {
+        console.log(
+          `${result.source}:${finding.line}:${finding.column}: ${finding.severity} ${finding.message} (${finding.ruleId})`,
+        );
+      }
     }
   }
 

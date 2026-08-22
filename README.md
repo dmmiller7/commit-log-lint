@@ -50,6 +50,39 @@ Example output:
 <stdin>:1:1: error commit looks unfinished (wip/fixup/squash marker in subject) (wip-marker)
 ```
 
+## Output formats
+
+By default, findings print as `source:line:column` text lines. Pass
+`--format json` to get a machine-readable form instead, useful for CI
+steps that want to post annotations rather than parse text:
+
+```
+git log -1 --format=%B | node dist/cli.js --format json -
+```
+
+```json
+[
+  {
+    "source": "<stdin>",
+    "readError": null,
+    "findings": [
+      {
+        "line": 1,
+        "column": 1,
+        "ruleId": "wip-marker",
+        "severity": "error",
+        "message": "commit looks unfinished (wip/fixup/squash marker in subject)"
+      }
+    ]
+  }
+]
+```
+
+Each array entry corresponds to one source argument, in order. If a
+source couldn't be read, `readError` holds the message and `findings` is
+empty for that entry. The exit status is unchanged by `--format`: `1` if
+any entry has a read error or an `error`-severity finding.
+
 ## As a commit-msg hook
 
 Drop this in `.git/hooks/commit-msg` and make it executable:
