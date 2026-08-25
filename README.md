@@ -50,6 +50,22 @@ Example output:
 <stdin>:1:1: error commit looks unfinished (wip/fixup/squash marker in subject) (wip-marker)
 ```
 
+## Linting a full git log
+
+Checking one message at a time is fine for a `commit-msg` hook, but for
+auditing history you want every commit in a range at once. Pass `--log`
+and feed it `git log` output formatted with NUL-separated hash/message
+pairs:
+
+```
+git log --format="%H%x00%B%x00" main..feature | node dist/cli.js --log -
+```
+
+Each commit in the stream becomes its own result, labeled with the
+source and the commit's abbreviated hash (`<stdin>:a1b2c3d`), so findings
+still point at something you can `git show`. `--log` works with file
+arguments too, if you've saved the log output to a file first.
+
 ## Output formats
 
 By default, findings print as `source:line:column` text lines. Pass

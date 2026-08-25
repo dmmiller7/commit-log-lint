@@ -209,3 +209,33 @@ export function lintText(text: string, config: LintConfig = DEFAULT_CONFIG): Fin
   findings.sort((a, b) => a.line - b.line || a.column - b.column);
   return findings;
 }
+
+export interface LogCommit {
+  hash: string;
+  message: string;
+}
+
+// A commit message can contain anything a person types, including blank
+// lines and stray characters, so the only safe delimiter between commits
+// in a log stream is NUL, which git itself never puts in a message. This
+// matches `git log --format=%H%x00%B%x00`: each commit contributes a hash
+// followed by its full message, each terminated by NUL.
+export function splitLogStream(text: string): LogCommit[] {
+  const parts = text.split("\0");
+  if (parts.length > 0 && parts[parts.length - 1] === "") {
+    parts.pop();
+  }
+  if (parts.length === 0) {
+    return [];
+  }
+  if (parts.length % 2 !== 0) {
+    throw new Error(
+      "malformed log stream: expected hash/message pairs separated by NUL (use --format=%H%x00%B%x00)",
+    );
+  }
+  const commits: LogCommit[] = [];
+  for (let i = 0; i < parts.length; i += 2) {
+    commits.push({ hash: parts[i], message: parts[i + 1] });
+  }
+  return commits;
+}

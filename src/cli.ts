@@ -3,6 +3,7 @@ import process from "node:process";
 import {
   lintText,
   mergeConfig,
+  splitLogStream,
   DEFAULT_CONFIG,
   RULE_IDS,
   type ConfigOverrides,
@@ -59,14 +60,16 @@ function loadConfig(): LintConfig {
 
 interface ParsedArgs {
   format: "text" | "json";
+  log: boolean;
   sources: string[];
 }
 
-// Only one flag exists so far, so hand-rolled parsing is simpler than
-// pulling in an args library for it.
+// Only a couple of flags exist so far, so hand-rolled parsing is simpler
+// than pulling in an args library for it.
 function parseArgs(argv: string[]): ParsedArgs {
   const sources: string[] = [];
   let format = "text";
+  let log = false;
 
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
@@ -78,6 +81,8 @@ function parseArgs(argv: string[]): ParsedArgs {
       format = value;
     } else if (arg.startsWith("--format=")) {
       format = arg.slice("--format=".length);
+    } else if (arg === "--log") {
+      log = true;
     } else {
       sources.push(arg);
     }
@@ -87,7 +92,7 @@ function parseArgs(argv: string[]): ParsedArgs {
     throw new Error(`unknown format "${format}", expected "text" or "json"`);
   }
 
-  return { format, sources };
+  return { format, log, sources };
 }
 
 interface SourceResult {
@@ -108,6 +113,32 @@ function lintSource(source: string, config: LintConfig): SourceResult {
   return { source: label, readError: null, findings: lintText(text, config) };
 }
 
+// One source in --log mode expands to one result per commit in the
+// stream, each labeled with its abbreviated hash so findings still point
+// somewhere useful.
+function lintLogSource(source: string, config: LintConfig): SourceResult[] {
+  const label = source === "-" ? "<stdin>" : source;
+  let text: string;
+  try {
+    text = readSource(source);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return [{ source: label, readError: message, findings: [] }];
+  }
+
+  try {
+    const commits = splitLogStream(text);
+    return commits.map((commit) => ({
+      source: `${label}:${commit.hash.slice(0, 7)}`,
+      readError: null,
+      findings: lintText(commit.message, config),
+    }));
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return [{ source: label, readError: message, findings: [] }];
+  }
+}
+
 function main(): number {
   let config: LintConfig;
   try {
@@ -126,7 +157,9 @@ function main(): number {
   }
 
   const sources = parsed.sources.length > 0 ? parsed.sources : ["-"];
-  const results = sources.map((source) => lintSource(source, config));
+  const results = parsed.log
+    ? sources.flatMap((source) => lintLogSource(source, config))
+    : sources.map((source) => lintSource(source, config));
   const hasError = results.some(
     (result) => result.readError !== null || result.findings.some((finding) => finding.severity === "error"),
   );
