@@ -24,6 +24,16 @@ tsc
 
 This compiles `src/` to `dist/`.
 
+## Testing
+
+```
+npm test
+```
+
+Runs the build then Node's built-in test runner (`node --test`) against
+the compiled test file. No test framework is installed; `node:test` and
+`node:assert` from the standard library are enough.
+
 ## Usage
 
 Lint a single commit message from a file:
