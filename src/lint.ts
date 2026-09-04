@@ -17,6 +17,7 @@ export const RULE_IDS = [
   "subject-length",
   "subject-trailing-period",
   "subject-not-capitalized",
+  "subject-imperative-mood",
   "wip-marker",
   "missing-blank-line",
   "trailing-whitespace",
@@ -36,6 +37,7 @@ export const DEFAULT_CONFIG: LintConfig = {
     "subject-length": "warning",
     "subject-trailing-period": "warning",
     "subject-not-capitalized": "warning",
+    "subject-imperative-mood": "warning",
     "wip-marker": "error",
     "missing-blank-line": "error",
     "trailing-whitespace": "warning",
@@ -110,6 +112,34 @@ function checkSubjectCapitalized(lines: string[], config: LintConfig): Finding[]
         ruleId: "subject-not-capitalized",
         severity,
         message: "subject line should start with a capital letter",
+      },
+    ];
+  }
+  return [];
+}
+
+// No dictionary of verbs is available, so this leans on the two suffixes
+// that reliably mark non-imperative mood in English ("Adding" / "Fixed")
+// rather than trying to catch every case, which keeps false positives rare.
+const NON_IMPERATIVE_SUFFIXES = ["ing", "ed"];
+
+function checkSubjectImperativeMood(lines: string[], config: LintConfig): Finding[] {
+  const severity = config.rules["subject-imperative-mood"];
+  if (severity === "off") return [];
+  const subject = lines[0] ?? "";
+  const firstWord = subject.match(/[a-zA-Z]+/);
+  if (!firstWord) return [];
+  const word = firstWord[0];
+  const lower = word.toLowerCase();
+  const suffix = NON_IMPERATIVE_SUFFIXES.find((candidate) => lower.endsWith(candidate) && lower.length > candidate.length);
+  if (suffix) {
+    return [
+      {
+        line: 1,
+        column: (firstWord.index ?? 0) + 1,
+        ruleId: "subject-imperative-mood",
+        severity,
+        message: `subject line should use imperative mood, e.g. "Fix" instead of "${word}"`,
       },
     ];
   }
@@ -194,6 +224,7 @@ const rules: Rule[] = [
   checkSubjectLength,
   checkSubjectPeriod,
   checkSubjectCapitalized,
+  checkSubjectImperativeMood,
   checkWipMarker,
   checkBlankLineAfterSubject,
   checkTrailingWhitespace,

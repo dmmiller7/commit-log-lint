@@ -60,6 +60,34 @@ test("subject-not-capitalized: skips leading punctuation to find the first lette
   assert.equal(findings[0].column, 2);
 });
 
+test("subject-imperative-mood: flags a gerund first word", () => {
+  const config = only(DEFAULT_CONFIG, "subject-imperative-mood");
+  const findings = lintText("Adding a new option", config);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].ruleId, "subject-imperative-mood");
+  assert.equal(findings[0].column, 1);
+});
+
+test("subject-imperative-mood: flags a past-tense first word", () => {
+  const config = only(DEFAULT_CONFIG, "subject-imperative-mood");
+  const findings = lintText("Fixed the parser", config);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].ruleId, "subject-imperative-mood");
+});
+
+test("subject-imperative-mood: allows an imperative first word", () => {
+  const config = only(DEFAULT_CONFIG, "subject-imperative-mood");
+  const findings = lintText("Fix the parser", config);
+  assert.equal(findings.length, 0);
+});
+
+test("subject-imperative-mood: skips leading punctuation to find the first word", () => {
+  const config = only(DEFAULT_CONFIG, "subject-imperative-mood");
+  const findings = lintText("[core] Adding a new option", config);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].column, 7);
+});
+
 test("wip-marker: flags wip, fixup!, and squash! subjects", () => {
   const config = only(DEFAULT_CONFIG, "wip-marker");
   for (const subject of ["wip: still working", "fixup! earlier commit", "squash! earlier commit", "WIP"]) {

@@ -159,10 +159,17 @@ Severities below are the defaults; override any of them in
 | `subject-length` | warning | subject line over 72 characters |
 | `subject-trailing-period` | warning | subject line ends with `.` |
 | `subject-not-capitalized` | warning | subject line doesn't start with a capital letter |
+| `subject-imperative-mood` | warning | first word of the subject looks like `-ing`/`-ed` form instead of imperative |
 | `wip-marker` | error | subject starts with `wip`, `fixup!`, or `squash!` |
 | `missing-blank-line` | error | no blank line between subject and body |
 | `trailing-whitespace` | warning | any line ends with trailing spaces or tabs |
 | `body-line-length` | warning | a wrapped body line over 100 characters |
+
+`subject-imperative-mood` is a heuristic, not a grammar check: it only
+looks at whether the first word ends in `-ing` or `-ed`, so it can miss
+real problems ("Fixes the bug") and occasionally flag a first word that
+happens to end that way but isn't a verb. Turn it off in
+`.commitlintrc.json` if it's noisier than it's worth for your history.
 
 ## License
 
